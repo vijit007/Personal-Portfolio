@@ -1,0 +1,740 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+// ------------------------------------------------------------
+// Minimal B/W Portfolio + Resume — Single File, Fully Editable (Owner‑only)
+// ------------------------------------------------------------
+// What changed in this version:
+// - Added Projects section (always visible; condensed in Resume Mode)
+// - Added Photo/Avatar support (owner can upload; stored in localStorage)
+// - Removed public Edit; Admin/Owner panel is hidden behind a secret
+// - Added "Export Static HTML" for one‑file deploy (no editor included)
+// - Print‑to‑PDF remains for resume downloads
+
+const LS_KEY = "vijit_portfolio_resume_v2";
+const ADMIN_FLAG = "vijit_admin_enabled";
+const ADMIN_SECRET = "vijit-owns-this"; // 🔐 Change this string before publishing
+
+const initialData = {
+  meta: {
+    owner: "Vijit Vidya",
+    role: "Cloud & DevOps Leader",
+    location: "Noida, India",
+    linkedin: "https://www.linkedin.com/in/vijit-vidya/",
+    email: "vijitvidya007@gmail.com",
+    phone: "+91-9910606303",
+    tagline:
+      "10+ years scaling cloud platforms across AWS, GCP & Azure. Cost‑savvy. SRE at heart. Business‑first from ISB.",
+    photo: "", // data URL or https URL
+  },
+  summary:
+    "Cloud & DevOps Leader with 10 years’ experience scaling enterprise systems across AWS, GCP & Azure. Proven in mentoring teams, driving end‑to‑end DevOps strategies, and cutting cloud costs by 40%. Skilled in Kubernetes, Serverless, ECS & Terraform. Partnered with global stakeholders to modernize platforms, reduce MTTR by 40%, and save $100K+ annually. MBA from ISB with a business‑first mindset and strong delivery focus.",
+  experience: [
+    {
+      company: "TO THE NEW",
+      location: "Noida, India",
+      roles: [
+        {
+          title: "DevOps Lead",
+          start: "Sept 2021",
+          end: "Present",
+          bullets: [
+            "Led a 5+ member SRE team to architect and maintain highly available, secure platforms across AWS/GCP/Azure.",
+            "Mentored junior engineers and set Agile rhythms — boosting accountability and cross‑team collaboration.",
+            "Built resilient CI/CD and cloud‑native deployments using Kubernetes, ECS, Lambda, Terraform; cut release errors by ~70%.",
+            "Defined observability (SLAs/SLIs) and drove adoption of New Relic, Prometheus, custom alerting.",
+            "Delivered $100K+ annualized savings via Graviton migration, rightsizing, and proactive cost dashboards.",
+          ],
+        },
+        {
+          title: "Senior DevOps Engineer",
+          start: "Sept 2020",
+          end: "Sept 2021",
+          bullets: [
+            "Saved ~40% cloud cost through rightsizing, Graviton migration, and cleanup pipelines.",
+            "Owned 5+ end‑to‑end cloud migrations with zero‑downtime via GitOps, CI/CD, and IaC.",
+            "Developed post‑deploy observability playbooks (Prometheus, New Relic, X‑Ray) — MTTR from 1.5h to 45m.",
+            "Ran capacity & chaos testing (CPU/memory/IOPS) to assure resiliency and SLA compliance.",
+            "Hardened cloud security across AWS/Azure/GCP (IAM, encryption, OWASP‑based policies).",
+          ],
+        },
+      ],
+    },
+    {
+      company: "HCL Technologies",
+      location: "Noida, India",
+      roles: [
+        {
+          title: "AWS Cloud Specialist",
+          start: "July 2019",
+          end: "Sept 2021",
+          bullets: [
+            "Architected & deployed AWS infra with CloudFormation for HA & scale across client environments.",
+            "Automated workflows using AWS SSM, Ansible & schedulers, streamlining ops and efficiency.",
+            "Implemented SSO with Azure AD & AWS IAM, enhancing security, access control & compliance.",
+            "Orchestrated CloudEndure for DR & migrations, improving reliability and RTO/RPO.",
+          ],
+        },
+      ],
+    },
+    {
+      company: "IHS Markit (S&P Global)",
+      location: "Noida, India",
+      roles: [
+        {
+          title: "IT Analyst",
+          start: "June 2018",
+          end: "June 2019",
+          bullets: [
+            "Managed on‑prem AD & mailbox admin; resolved app configuration issues to enhance performance.",
+            "Designed & implemented global access management with AWS IAM & Azure AD (RBAC).",
+          ],
+        },
+      ],
+    },
+    {
+      company: "Capgemini",
+      location: "Noida, India",
+      roles: [
+        {
+          title: "Senior Software Engineer",
+          start: "Sept 2016",
+          end: "May 2018",
+          bullets: [
+            "Implemented ITIL to strengthen Incident Management and minimize service disruption.",
+            "Handled P1 incidents with proactive stakeholder comms and risk management.",
+          ],
+        },
+      ],
+    },
+  ],
+  projects: [
+    {
+      name: "Bharti AXA — Network Firewall & CI/CD Modernization",
+      period: "Mar 2025 – Jun 2025",
+      bullets: [
+        "Implemented AWS Network Firewall, Terraform IaC, and Argo CD GitOps for secure, repeatable delivery.",
+        "Drove cost optimization and DR validation; uplifted cross‑team release velocity.",
+      ],
+    },
+    {
+      name: "Tabcorp Digital — SRE & Observability Uplift",
+      period: "May 2023 – Dec 2024",
+      bullets: [
+        "Established SLOs, alerts, and dashboards (Prometheus, Grafana, New Relic); reduced MTTR by ~40%.",
+        "Hardened security (WAF, TLS, secret rotation) and improved latency ~20% under peak load.",
+      ],
+    },
+    {
+      name: "Scripta Insights — Microservices Migration",
+      period: "Jul 2022 – Nov 2022",
+      bullets: [
+        "Shifted from monolith to microservices with GitHub Actions CI/CD and Terraform automation.",
+      ],
+    },
+    {
+      name: "Axonista — GKE → EKS Migration",
+      period: "Jun 2022 – Apr 2023",
+      bullets: [
+        "Designed inter‑cloud migration (GCP→AWS), Direct Connect/VPN, and EKS‑first delivery platform.",
+      ],
+    },
+    {
+      name: "Mutualink — Monitoring & Security",
+      period: "Mar 2022 – Apr 2024",
+      bullets: [
+        "Set up Grafana/Prometheus and GuardDuty; introduced cost guardrails and remediation playbooks.",
+      ],
+    },
+    {
+      name: "Column6 — DC → AWS Migration & Serverless",
+      period: "Dec 2021 – Mar 2022",
+      bullets: [
+        "Migrated workloads to AWS; configured Ceph, SES, and serverless patterns with Step Functions & Lambda.",
+      ],
+    },
+    {
+      name: "Organon — Multi‑Account Governance",
+      period: "Jul 2020 – Dec 2021",
+      bullets: [
+        "CloudFormation blueprints, CloudEndure DR, and SSO via Azure AD; enforced org‑wide IAM policies.",
+      ],
+    },
+    {
+      name: "Biogen — Ops, Patching & Cost Controls",
+      period: "Jul 2019 – Jul 2020",
+      bullets: [
+        "Automated patching via SSM/Ansible; Golden AMIs; ongoing cost analysis and rightsizing.",
+      ],
+    },
+  ],
+  skills: {
+    primary: [
+      "AWS (EKS, ECS, Lambda, CloudFormation/Terraform)",
+      "Kubernetes, GitOps, CI/CD",
+      "Observability (New Relic, Prometheus, X‑Ray)",
+      "SRE, SLIs/SLOs, Incident Mgmt",
+      "Cost Optimization (Graviton, rightsizing)",
+      "Security (IAM, encryption, OWASP)",
+    ],
+    tools: ["Ansible", "AWS SSM", "CloudEndure", "Grafana", "Docker", "GitHub Actions", "Jenkins"],
+    languages: ["Bash", "Python"],
+  },
+  certifications: [
+    "AWS DevOps Engineer – Professional",
+    "AWS Developer – Associate",
+    "AWS Solutions Architect – Associate",
+    "GCP Cloud Engineer – Associate",
+    "ITIL v4 Foundation",
+    "AWS Artificial Intelligence Practitioner – Foundation",
+  ],
+  education: [
+    {
+      school: "Indian School of Business (ISB), Hyderabad",
+      details: "MBA — Major: Marketing, Minor: General Management | CGPA: 3.5/4",
+      years: "2023–2024",
+      notes: ["Marketing Club Lead", "Mentor for PM & Tech aspirants"],
+    },
+    {
+      school: "Noida International University (NIU)",
+      details: "B.Tech — Electronics & Communication Engineering | CGPA: 7.83",
+      years: "2011–2015",
+      notes: ["Tech‑Fest Core Team (Design head)"]
+    },
+  ],
+  extras: {
+    languages: ["English", "Hindi"],
+    achievements: [
+      "Runner‑up among 1600 teams in national case competition; won ₹50k.",
+    ],
+    interests: ["Classical music (4‑year degree)", "Guitar", "Piano", "Fitness"],
+  },
+};
+
+function useLocalData() {
+  const [data, setData] = useState(initialData);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) setData(JSON.parse(raw));
+    } catch {}
+  }, []);
+  const save = (next) => {
+    setData(next);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+    } catch {}
+  };
+  const reset = () => save(initialData);
+  return { data, save, reset };
+}
+
+function Section({ title, children, className = "" }) {
+  return (
+    <section className={`mb-10 ${className}`}>
+      <h2 className="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Bullet({ children }) {
+  return <li className="leading-relaxed ml-5 list-disc">{children}</li>;
+}
+
+function Pill({ children }) {
+  return (
+    <span className="px-2 py-1 text-xs border border-black rounded-full mr-2 mb-2 inline-block">
+      {children}
+    </span>
+  );
+}
+
+function ControlButton({ children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 py-1 border border-black rounded-md text-sm hover:bg-black hover:text-white transition-colors"
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function MinimalBWPortfolio() {
+  const { data, save, reset } = useLocalData();
+  const [admin, setAdmin] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [jsonText, setJsonText] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [resumeMode, setResumeMode] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem(ADMIN_FLAG) === "1") setAdmin(true);
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("admin") === "1") {
+      setAdmin(true);
+      localStorage.setItem(ADMIN_FLAG, "1");
+    }
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ".") {
+        const input = prompt("Owner secret?");
+        if (input && input === ADMIN_SECRET) {
+          setAdmin(true);
+          localStorage.setItem(ADMIN_FLAG, "1");
+          alert("Owner mode enabled");
+        } else if (input) {
+          alert("Wrong secret");
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    setJsonText(JSON.stringify(data, null, 2));
+  }, [panelOpen]);
+
+  const handleSaveJSON = () => {
+    setJsonError("");
+    try {
+      const parsed = JSON.parse(jsonText);
+      save(parsed);
+    } catch (e) {
+      setJsonError(e.message);
+    }
+  };
+
+  const uploadPhoto = (file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = { ...data, meta: { ...data.meta, photo: String(reader.result) } };
+      save(next);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const exportStaticHTML = () => {
+    const html = generateStaticHTML(data);
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "index.html";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const nowYear = new Date().getFullYear();
+  const resumeClasses = resumeMode ? "max-w-[850px]" : "max-w-4xl";
+
+  return (
+    <div className="min-h-screen bg-white text-black">
+      <style>{`
+        @page { size: A4; margin: 14mm; }
+        @media print {
+          #controls, #admin-panel, .no-print { display: none !important; }
+          #resume-root { box-shadow: none !important; border: none !important; }
+          body { background: white !important; }
+        }
+      `}</style>
+
+      {/* Top Controls (no public edit) */}
+      <header id="controls" className="no-print sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-black/10">
+        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
+          <div className="font-semibold tracking-tight">Vijit — Portfolio & Resume</div>
+          <div className="flex items-center gap-2">
+            <ControlButton onClick={() => setResumeMode(!resumeMode)}>
+              {resumeMode ? "Portfolio Mode" : "Resume Mode"}
+            </ControlButton>
+            <ControlButton onClick={() => window.print()}>Download PDF</ControlButton>
+            <ControlButton onClick={() => (window.location.href = data.meta.linkedin)}>LinkedIn</ControlButton>
+            {admin && (
+              <ControlButton onClick={() => setPanelOpen(!panelOpen)}>{panelOpen ? "Close Admin" : "Admin Panel"}</ControlButton>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Body */}
+      <main className="mx-auto px-4 py-8">
+        <div id="resume-root" className={`mx-auto ${resumeClasses} p-8 border border-black/10 shadow-[0_0_0_1px_rgba(0,0,0,0.05)]`}>
+          {/* Hero / Header with photo */}
+          <div className="flex items-start gap-6 mb-6">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold tracking-tight">{data.meta.owner.toUpperCase()}</h1>
+              <div className="text-sm flex flex-wrap gap-x-3 gap-y-1 text-black/80">
+                <span className="font-medium">{data.meta.role}</span>
+                <span>•</span>
+                <a href={`mailto:${data.meta.email}`} className="underline underline-offset-4">{data.meta.email}</a>
+                <span>•</span>
+                <a href={data.meta.linkedin} className="underline underline-offset-4">LinkedIn</a>
+                <span>•</span>
+                <span>{data.meta.phone}</span>
+                <span>•</span>
+                <span>{data.meta.location}</span>
+              </div>
+              {!resumeMode && (
+                <p className="text-sm text-black/80 mt-2">{data.meta.tagline}</p>
+              )}
+            </div>
+            <div className="w-20 h-20 rounded-full overflow-hidden border border-black/20 shrink-0">
+              {data.meta.photo ? (
+                <img src={data.meta.photo} alt="Vijit" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-black/50">No Photo</div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary */}
+          <Section title="Professional Summary" className="mt-2">
+            <p className="leading-relaxed text-[0.95rem]">{data.summary}</p>
+          </Section>
+
+          {/* Experience */}
+          <Section title="Professional Experience">
+            <div className="space-y-6">
+              {data.experience.map((exp, i) => (
+                <div key={i}>
+                  <div className="flex flex-wrap items-baseline justify-between">
+                    <h3 className="font-semibold tracking-tight">{exp.company}</h3>
+                    <div className="text-sm text-black/70">{exp.location}</div>
+                  </div>
+                  {exp.roles.map((r, j) => (
+                    <div key={j} className="mt-2">
+                      <div className="text-sm font-medium">{r.title} <span className="text-black/60">• {r.start} – {r.end}</span></div>
+                      <ul className="mt-1 space-y-1">
+                        {r.bullets.map((b, k) => (
+                          <Bullet key={k}>{b}</Bullet>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* Skills & Certifications */}
+          <div className={`grid gap-8 ${resumeMode ? "grid-cols-2" : "grid-cols-1"}`}>
+            <Section title="Skills">
+              <div className="mb-3">
+                <div className="text-sm font-medium mb-1">Core</div>
+                <div>
+                  {data.skills.primary.map((s, i) => (
+                    <Pill key={i}>{s}</Pill>
+                  ))}
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="text-sm font-medium mb-1">Tools</div>
+                <div>
+                  {data.skills.tools.map((s, i) => (
+                    <Pill key={i}>{s}</Pill>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-1">Languages</div>
+                <div>
+                  {data.skills.languages.map((s, i) => (
+                    <Pill key={i}>{s}</Pill>
+                  ))}
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Certifications">
+              <ul className="space-y-1">
+                {data.certifications.map((c, i) => (
+                  <Bullet key={i}>{c}</Bullet>
+                ))}
+              </ul>
+            </Section>
+          </div>
+
+          {/* Projects — always visible; condensed in resume mode */}
+          <Section title="Featured Projects">
+            <div className="grid md:grid-cols-2 gap-6">
+              {(resumeMode ? data.projects.slice(0, 4) : data.projects).map((p, i) => (
+                <div key={i} className="border border-black/15 rounded-xl p-4">
+                  <div className="flex items-baseline justify-between">
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-xs text-black/60">{p.period}</div>
+                  </div>
+                  <ul className="mt-2 space-y-1">
+                    {p.bullets.map((b, k) => (
+                      <Bullet key={k}>{b}</Bullet>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            {resumeMode && data.projects.length > 4 && (
+              <div className="text-xs text-black/60 mt-2">+{data.projects.length - 4} more projects on portfolio view</div>
+            )}
+          </Section>
+
+          {/* Education & Extras */}
+          <div className={`grid gap-8 ${resumeMode ? "grid-cols-2" : "grid-cols-1"}`}>
+            <Section title="Education">
+              <ul className="space-y-3">
+                {data.education.map((e, i) => (
+                  <li key={i}>
+                    <div className="font-medium">{e.school}</div>
+                    <div className="text-sm text-black/75">{e.details} — {e.years}</div>
+                    {!!e.notes?.length && (
+                      <ul className="mt-1 space-y-1">
+                        {e.notes.map((n, k) => (
+                          <Bullet key={k}>{n}</Bullet>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+
+            <Section title="Additional">
+              <div className="mb-3">
+                <div className="text-sm font-medium mb-1">Achievements</div>
+                <ul className="space-y-1">
+                  {data.extras.achievements.map((a, i) => (
+                    <Bullet key={i}>{a}</Bullet>
+                  ))}
+                </ul>
+              </div>
+              <div className="mb-3">
+                <div className="text-sm font-medium mb-1">Languages</div>
+                <div>
+                  {data.extras.languages.map((s, i) => (
+                    <Pill key={i}>{s}</Pill>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium mb-1">Interests</div>
+                <div>
+                  {data.extras.interests.map((s, i) => (
+                    <Pill key={i}>{s}</Pill>
+                  ))}
+                </div>
+              </div>
+            </Section>
+          </div>
+
+          {/* Footer */}
+          <footer className="mt-8 text-xs text-black/60 flex items-center justify-between">
+            <span>© {nowYear} {data.meta.owner}. All rights reserved.</span>
+            <span>Black & White • Minimal</span>
+          </footer>
+        </div>
+      </main>
+
+      {/* Owner/Admin Panel (hidden by default) */}
+      {panelOpen && admin && (
+        <aside id="admin-panel" className="no-print fixed inset-y-0 right-0 w-full max-w-xl bg-white border-l border-black/10 shadow-2xl">
+          <div className="h-full flex flex-col">
+            <div className="px-4 py-3 border-b border-black/10 flex items-center justify-between">
+              <div className="font-semibold">Owner Panel</div>
+              <div className="flex gap-2">
+                <ControlButton onClick={() => setPanelOpen(false)}>Close</ControlButton>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-4 overflow-auto flex-1">
+              <div>
+                <div className="text-sm font-medium mb-2">Profile Photo</div>
+                <div className="flex items-center gap-3">
+                  <input type="file" accept="image/*" onChange={(e) => e.target.files && uploadPhoto(e.target.files[0])} />
+                  <ControlButton onClick={() => save({ ...data, meta: { ...data.meta, photo: "" } })}>Remove</ControlButton>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Content (JSON)</div>
+                <textarea
+                  className="w-full h-64 font-mono text-xs p-3 border border-black/20 rounded-lg focus:outline-none"
+                  value={jsonText}
+                  onChange={(e) => setJsonText(e.target.value)}
+                  spellCheck={false}
+                />
+                {!!jsonError && <div className="mt-2 text-xs text-red-600">{jsonError}</div>}
+                <div className="mt-2 flex gap-2">
+                  <ControlButton onClick={() => setJsonText(JSON.stringify(data, null, 2))}>Reload</ControlButton>
+                  <ControlButton onClick={handleSaveJSON}>Validate & Save</ControlButton>
+                  <ControlButton onClick={reset}>Reset to Default</ControlButton>
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <ControlButton
+                    onClick={() => {
+                      const blob = new Blob([jsonText], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = "vijit-portfolio.json"; a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >Export JSON</ControlButton>
+                  <label className="px-3 py-1 border border-black rounded-md text-sm cursor-pointer hover:bg-black hover:text-white transition-colors">
+                    Import JSON
+                    <input
+                      type="file"
+                      accept="application/json"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setJsonText(String(reader.result));
+                        reader.readAsText(file);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Deployment</div>
+                <div className="flex gap-2 flex-wrap">
+                  <ControlButton onClick={exportStaticHTML}>Export Static HTML</ControlButton>
+                  <ControlButton onClick={() => { localStorage.removeItem(ADMIN_FLAG); setAdmin(false); alert("Admin disabled. Reload page to verify public view."); }}>Disable Admin</ControlButton>
+                </div>
+                <p className="text-xs text-black/60 mt-2">Tip: Press Ctrl+. and enter your secret to enable admin on a new device.</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
+    </div>
+  );
+}
+
+// -------- Export: Static one‑file HTML (no editor) ---------------------------
+function esc(s) { return String(s || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
+function li(items) { return (items||[]).map(x => `<li class="leading-relaxed ml-5 list-disc">${esc(x)}</li>`).join(""); }
+function pills(items) { return (items||[]).map(x => `<span class="px-2 py-1 text-xs border border-black rounded-full mr-2 mb-2 inline-block">${esc(x)}</span>`).join(""); }
+function experience(exp) {
+  return (exp||[]).map(e => `
+    <div>
+      <div class="flex flex-wrap items-baseline justify-between">
+        <h3 class="font-semibold tracking-tight">${esc(e.company)}</h3>
+        <div class="text-sm text-black/70">${esc(e.location)}</div>
+      </div>
+      ${(e.roles||[]).map(r => `
+        <div class="mt-2">
+          <div class="text-sm font-medium">${esc(r.title)} <span class="text-black/60">• ${esc(r.start)} – ${esc(r.end)}</span></div>
+          <ul class="mt-1 space-y-1">${li(r.bullets)}</ul>
+        </div>
+      `).join("")}
+    </div>
+  `).join("");
+}
+function projects(prjs) {
+  return (prjs||[]).map(p => `
+    <div class="border border-black/15 rounded-xl p-4">
+      <div class="flex items-baseline justify-between">
+        <div class="font-medium">${esc(p.name)}</div>
+        <div class="text-xs text-black/60">${esc(p.period)}</div>
+      </div>
+      <ul class="mt-2 space-y-1">${li(p.bullets)}</ul>
+    </div>
+  `).join("");
+}
+function generateStaticHTML(data) {
+  const nowYear = new Date().getFullYear();
+  const photo = data?.meta?.photo ? `<img src="${esc(data.meta.photo)}" alt="Vijit" class="w-full h-full object-cover"/>` : `<div class="w-full h-full flex items-center justify-center text-xs text-black/50">No Photo</div>`;
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${esc(data?.meta?.owner || "Portfolio")}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @page { size: A4; margin: 14mm; }
+      @media print { .no-print { display:none } body{ background:white } }
+    </style>
+  </head>
+  <body class="bg-white text-black">
+    <main class="mx-auto px-4 py-8">
+      <div class="mx-auto max-w-[850px] p-8 border border-black/10 shadow-[0_0_0_1px_rgba(0,0,0,0.05)]">
+        <div class="flex items-start gap-6 mb-6">
+          <div class="flex-1">
+            <h1 class="text-3xl font-bold tracking-tight">${esc((data.meta?.owner||'').toUpperCase())}</h1>
+            <div class="text-sm flex flex-wrap gap-x-3 gap-y-1 text-black/80">
+              <span class="font-medium">${esc(data.meta?.role)}</span>
+              <span>•</span>
+              <a href="mailto:${esc(data.meta?.email)}" class="underline underline-offset-4">${esc(data.meta?.email)}</a>
+              <span>•</span>
+              <a href="${esc(data.meta?.linkedin)}" class="underline underline-offset-4">LinkedIn</a>
+              <span>•</span>
+              <span>${esc(data.meta?.phone)}</span>
+              <span>•</span>
+              <span>${esc(data.meta?.location)}</span>
+            </div>
+            <p class="text-sm text-black/80 mt-2">${esc(data.meta?.tagline)}</p>
+          </div>
+          <div class="w-20 h-20 rounded-full overflow-hidden border border-black/20 shrink-0">${photo}</div>
+        </div>
+
+        <section class="mb-10">
+          <h2 class="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">Professional Summary</h2>
+          <p class="leading-relaxed text-[0.95rem]">${esc(data.summary)}</p>
+        </section>
+
+        <section class="mb-10">
+          <h2 class="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">Professional Experience</h2>
+          <div class="space-y-6">${experience(data.experience)}</div>
+        </section>
+
+        <div class="grid gap-8 grid-cols-2">
+          <section>
+            <h2 class="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">Skills</h2>
+            <div class="mb-3"><div class="text-sm font-medium mb-1">Core</div><div>${pills(data.skills?.primary)}</div></div>
+            <div class="mb-3"><div class="text-sm font-medium mb-1">Tools</div><div>${pills(data.skills?.tools)}</div></div>
+            <div><div class="text-sm font-medium mb-1">Languages</div><div>${pills(data.skills?.languages)}</div></div>
+          </section>
+          <section>
+            <h2 class="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">Certifications</h2>
+            <ul class="space-y-1">${li(data.certifications)}</ul>
+          </section>
+        </div>
+
+        <section class="mb-10">
+          <h2 class="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">Featured Projects</h2>
+          <div class="grid md:grid-cols-2 gap-6">${projects(data.projects)}</div>
+        </section>
+
+        <div class="grid gap-8 grid-cols-2">
+          <section>
+            <h2 class="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">Education</h2>
+            <ul class="space-y-3">
+              ${(data.education||[]).map(e => `
+                <li>
+                  <div class="font-medium">${esc(e.school)}</div>
+                  <div class="text-sm text-black/75">${esc(e.details)} — ${esc(e.years)}</div>
+                  ${(e.notes||[]).length?`<ul class="mt-1 space-y-1">${li(e.notes)}</ul>`:""}
+                </li>
+              `).join("")}
+            </ul>
+          </section>
+          <section>
+            <h2 class="text-xl font-semibold tracking-tight border-b border-black/20 pb-2 mb-4">Additional</h2>
+            <div class="mb-3"><div class="text-sm font-medium mb-1">Achievements</div><ul class="space-y-1">${li(data.extras?.achievements||[])}</ul></div>
+            <div class="mb-3"><div class="text-sm font-medium mb-1">Languages</div><div>${pills(data.extras?.languages||[])}</div></div>
+            <div><div class="text-sm font-medium mb-1">Interests</div><div>${pills(data.extras?.interests||[])}</div></div>
+          </section>
+        </div>
+
+        <footer class="mt-8 text-xs text-black/60 flex items-center justify-between">
+          <span>© ${nowYear} ${esc(data.meta?.owner)}. All rights reserved.</span>
+          <span>Black & White • Minimal</span>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>`;
+}
